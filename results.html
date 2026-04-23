@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Results — QuickPoll</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>" />
+  <link rel="stylesheet" href="/global.css" />
+  <style>
+    .main { flex: 1; padding: 48px 24px; }
+    .results-header { margin-bottom: 32px; }
+    .poll-question {
+      font-family: var(--font-head);
+      font-size: 1.8rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      line-height: 1.2;
+      margin-top: 12px;
+    }
+    .total-votes {
+      color: var(--muted);
+      font-size: 0.88rem;
+      margin-top: 8px;
+    }
+    .live-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 0.78rem; font-weight: 500;
+      color: var(--accent);
+    }
+    .live-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--accent);
+      animation: pulse 1.4s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.4; transform: scale(0.7); }
+    }
+
+    /* Result bars */
+    .result-item { margin-bottom: 20px; }
+    .result-row {
+      display: flex; justify-content: space-between;
+      font-size: 0.9rem; margin-bottom: 6px;
+    }
+    .result-label { font-weight: 500; }
+    .result-pct   { color: var(--accent); font-weight: 600; font-family: var(--font-head); }
+    .bar-track {
+      background: var(--surface2);
+      border-radius: 99px;
+      height: 10px;
+      overflow: hidden;
+    }
+    .bar-fill {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 99px;
+      transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+      min-width: 2px;
+    }
+    .bar-fill.leading { background: var(--accent); }
+    .result-votes { color: var(--muted); font-size: 0.78rem; margin-top: 4px; }
+
+    .share-row { display: flex; gap: 8px; }
+    .share-input {
+      flex: 1;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 11px 14px;
+      border-radius: var(--radius);
+      font-size: 0.85rem;
+      outline: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <nav class="nav container">
+      <a href="/" class="nav-logo">Quick<span>Poll</span></a>
+      <div class="nav-actions" id="navActions"></div>
+    </nav>
+
+    <main class="main">
+      <div class="container">
+        <div id="loadingEl"><div class="spinner"></div></div>
+        <div id="errorEl" class="msg msg-error" style="display:none"></div>
+
+        <div id="resultsCard" style="display:none" class="fade-in">
+          <div class="results-header">
+            <div class="live-badge"><span class="live-dot"></span> Live results</div>
+            <h1 class="poll-question" id="pollQuestion"></h1>
+            <p class="total-votes" id="totalVotes"></p>
+          </div>
+
+          <div class="card">
+            <div id="resultsBars"></div>
+          </div>
+
+          <div class="card card-sm mt-3">
+            <p class="form-label mb-2">Share this poll</p>
+            <div class="share-row">
+              <input type="text" id="shareUrl" class="share-input" readonly />
+              <button class="btn btn-outline" id="copyBtn">Copy</button>
+            </div>
+          </div>
+
+          <div class="text-center mt-3">
+            <a id="voteLink" href="#" class="btn btn-primary">← Back to voting</a>
+            <a href="/create.html" class="btn btn-ghost mt-2">Create your own poll</a>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script type="module">
+    import { listenToPoll } from './polls.js';
+    import { onAuthChange } from './auth.js';
+
+    const params = new URLSearchParams(location.search);
+    const pollId = params.get('id');
+
+    if (!pollId) {
+      showError('No poll ID provided.');
+    } else {
+      init();
+    }
+
+    onAuthChange((user) => {
+      const nav = document.getElementById('navActions');
+      nav.innerHTML = user
+        ? `<a href="/dashboard.html" class="btn btn-ghost">My Polls</a>`
+        : `<a href="/dashboard.html" class="btn btn-ghost">Sign In</a>`;
+    });
+
+    function init() {
+      const shareUrl = `${location.origin}/vote.html?id=${pollId}`;
+      document.getElementById('shareUrl').value = shareUrl;
+      document.getElementById('voteLink').href = `/vote.html?id=${pollId}`;
+
+      // Real-time listener
+      const unsubscribe = listenToPoll(pollId, (poll) => {
+        document.getElementById('loadingEl').style.display = 'none';
+        document.getElementById('resultsCard').style.display = 'block';
+
+        document.getElementById('pollQuestion').textContent = poll.question;
+        const total = poll.totalVotes || 0;
+        document.getElementById('totalVotes').textContent =
+          `${total} vote${total !== 1 ? 's' : ''} so far`;
+
+        renderBars(poll.options, total);
+      });
+
+      // Clean up listener on page unload
+      window.addEventListener('beforeunload', unsubscribe);
+    }
+
+    function renderBars(options, total) {
+      const container = document.getElementById('resultsBars');
+      const entries = Object.entries(options);
+
+      // Find leading count
+      const maxVotes = Math.max(...entries.map(([, o]) => o.votes));
+
+      container.innerHTML = entries.map(([key, opt]) => {
+        const pct = total > 0 ? Math.round((opt.votes / total) * 100) : 0;
+        const isLeading = opt.votes === maxVotes && maxVotes > 0;
+        return `
+          <div class="result-item">
+            <div class="result-row">
+              <span class="result-label">${opt.text}${isLeading && total > 0 ? ' 🏆' : ''}</span>
+              <span class="result-pct">${pct}%</span>
+            </div>
+            <div class="bar-track">
+              <div class="bar-fill ${isLeading ? 'leading' : ''}" style="width: ${pct}%"></div>
+            </div>
+            <div class="result-votes">${opt.votes} vote${opt.votes !== 1 ? 's' : ''}</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Copy link
+    document.getElementById('copyBtn').addEventListener('click', () => {
+      navigator.clipboard.writeText(document.getElementById('shareUrl').value);
+      const btn = document.getElementById('copyBtn');
+      btn.textContent = 'Copied!';
+      setTimeout(() => btn.textContent = 'Copy', 2000);
+    });
+
+    function showError(msg) {
+      document.getElementById('loadingEl').style.display = 'none';
+      const el = document.getElementById('errorEl');
+      el.textContent = msg;
+      el.style.display = 'block';
+    }
+  </script>
+</body>
+</html>

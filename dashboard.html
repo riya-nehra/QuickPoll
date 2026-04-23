@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard — QuickPoll</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>" />
+  <link rel="stylesheet" href="/global.css" />
+  <style>
+    .main { flex: 1; padding: 48px 24px; }
+    .page-title {
+      font-family: var(--font-head);
+      font-size: 1.8rem; font-weight: 800;
+      letter-spacing: -0.02em; margin-bottom: 8px;
+    }
+
+    /* Auth forms */
+    .auth-tabs { display: flex; gap: 0; margin-bottom: 24px; }
+    .auth-tab {
+      flex: 1;
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 11px;
+      font-size: 0.88rem;
+      font-weight: 500;
+      transition: all var(--transition);
+    }
+    .auth-tab:first-child { border-radius: var(--radius) 0 0 var(--radius); }
+    .auth-tab:last-child  { border-radius: 0 var(--radius) var(--radius) 0; border-left: none; }
+    .auth-tab.active { background: var(--accent); color: #0d0d0f; border-color: var(--accent); }
+
+    /* Poll list */
+    .poll-list { display: flex; flex-direction: column; gap: 12px; margin-top: 20px; }
+    .poll-item {
+      display: flex; align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      transition: border-color var(--transition);
+      gap: 12px;
+    }
+    .poll-item:hover { border-color: rgba(109,255,135,0.3); }
+    .poll-item-text { flex: 1; min-width: 0; }
+    .poll-item-q {
+      font-weight: 500;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .poll-item-meta { color: var(--muted); font-size: 0.78rem; margin-top: 3px; }
+    .poll-item-actions { display: flex; gap: 8px; flex-shrink: 0; }
+
+    .google-btn {
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 13px 16px;
+      border-radius: var(--radius);
+      font-size: 0.9rem;
+      width: 100%;
+      transition: all var(--transition);
+    }
+    .google-btn:hover { border-color: var(--accent); }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <nav class="nav container">
+      <a href="/" class="nav-logo">Quick<span>Poll</span></a>
+      <div class="nav-actions" id="navActions"></div>
+    </nav>
+
+    <main class="main">
+      <div class="container">
+        <div id="loadingEl"><div class="spinner"></div></div>
+
+        <!-- Auth panel -->
+        <div id="authPanel" style="display:none" class="fade-in">
+          <h1 class="page-title">Sign in</h1>
+          <p class="text-muted mt-1">Sign in to save and manage your polls.</p>
+
+          <div class="card mt-4" style="max-width:400px">
+            <div class="auth-tabs">
+              <button class="auth-tab active" id="tabSignIn">Sign In</button>
+              <button class="auth-tab" id="tabSignUp">Sign Up</button>
+            </div>
+
+            <div id="authError" class="msg msg-error mb-3" style="display:none"></div>
+
+            <div class="form-group">
+              <label class="form-label">Email</label>
+              <input type="email" id="authEmail" class="form-input" placeholder="you@example.com" />
+            </div>
+            <div class="form-group mt-2">
+              <label class="form-label">Password</label>
+              <input type="password" id="authPassword" class="form-input" placeholder="••••••••" />
+            </div>
+            <button class="btn btn-primary w-full mt-3" id="authSubmitBtn">Sign In</button>
+
+            <div class="divider">or</div>
+
+            <button class="google-btn" id="googleBtn">
+              <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615Z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18Z"/><path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332Z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58Z"/></svg>
+              Continue with Google
+            </button>
+          </div>
+        </div>
+
+        <!-- Dashboard panel -->
+        <div id="dashPanel" style="display:none" class="fade-in">
+          <div class="flex items-center justify-between">
+            <h1 class="page-title">My Polls</h1>
+            <a href="/create.html" class="btn btn-primary">+ New Poll</a>
+          </div>
+          <p class="text-muted mt-1" id="userEmail"></p>
+
+          <div id="pollList" class="poll-list"></div>
+          <div id="emptyState" class="text-center mt-6" style="display:none">
+            <p class="text-muted">You haven't created any polls yet.</p>
+            <a href="/create.html" class="btn btn-outline mt-3">Create your first poll →</a>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script type="module">
+    import { signIn, signUp, googleSignIn, logOut, onAuthChange } from './auth.js';
+    import { listenToUserPolls } from './polls.js';
+
+    let unsubPolls = null;
+    let activeTab = 'signIn';
+
+    onAuthChange((user) => {
+      document.getElementById('loadingEl').style.display = 'none';
+      if (user) {
+        showDashboard(user);
+      } else {
+        showAuth();
+      }
+
+      const nav = document.getElementById('navActions');
+      nav.innerHTML = user
+        ? `<button class="btn btn-ghost" id="signOutBtn">Sign Out</button>`
+        : '';
+      if (user) {
+        document.getElementById('signOutBtn').addEventListener('click', () => logOut());
+      }
+    });
+
+    function showAuth() {
+      document.getElementById('authPanel').style.display = 'block';
+      document.getElementById('dashPanel').style.display = 'none';
+      if (unsubPolls) { unsubPolls(); unsubPolls = null; }
+    }
+
+    function showDashboard(user) {
+      document.getElementById('authPanel').style.display = 'none';
+      document.getElementById('dashPanel').style.display = 'block';
+      document.getElementById('userEmail').textContent = user.email || user.displayName || '';
+
+      unsubPolls = listenToUserPolls(user.uid, (polls) => {
+        const list = document.getElementById('pollList');
+        const empty = document.getElementById('emptyState');
+        if (polls.length === 0) {
+          list.innerHTML = '';
+          empty.style.display = 'block';
+          return;
+        }
+        empty.style.display = 'none';
+        list.innerHTML = polls.map(p => {
+          const total = p.totalVotes || 0;
+          const date = p.createdAt?.toDate
+            ? p.createdAt.toDate().toLocaleDateString()
+            : 'Just now';
+          return `
+            <div class="poll-item">
+              <div class="poll-item-text">
+                <div class="poll-item-q">${p.question}</div>
+                <div class="poll-item-meta">${total} vote${total !== 1 ? 's' : ''} · Created ${date}</div>
+              </div>
+              <div class="poll-item-actions">
+                <a href="/results.html?id=${p.id}" class="btn btn-outline" style="padding:8px 14px;font-size:0.82rem">Results</a>
+                <a href="/vote.html?id=${p.id}" class="btn btn-ghost" style="padding:8px 14px;font-size:0.82rem">Vote</a>
+              </div>
+            </div>
+          `;
+        }).join('');
+      });
+    }
+
+    // Tabs
+    document.getElementById('tabSignIn').addEventListener('click', () => {
+      activeTab = 'signIn';
+      document.getElementById('tabSignIn').classList.add('active');
+      document.getElementById('tabSignUp').classList.remove('active');
+      document.getElementById('authSubmitBtn').textContent = 'Sign In';
+    });
+    document.getElementById('tabSignUp').addEventListener('click', () => {
+      activeTab = 'signUp';
+      document.getElementById('tabSignUp').classList.add('active');
+      document.getElementById('tabSignIn').classList.remove('active');
+      document.getElementById('authSubmitBtn').textContent = 'Create Account';
+    });
+
+    // Email auth
+    document.getElementById('authSubmitBtn').addEventListener('click', async () => {
+      const email = document.getElementById('authEmail').value.trim();
+      const pw    = document.getElementById('authPassword').value;
+      const errEl = document.getElementById('authError');
+      errEl.style.display = 'none';
+
+      try {
+        if (activeTab === 'signIn') {
+          await signIn(email, pw);
+        } else {
+          await signUp(email, pw);
+        }
+      } catch (e) {
+        errEl.textContent = friendlyError(e.code);
+        errEl.style.display = 'block';
+      }
+    });
+
+    // Google auth
+    document.getElementById('googleBtn').addEventListener('click', async () => {
+      try {
+        await googleSignIn();
+      } catch (e) {
+        const errEl = document.getElementById('authError');
+        errEl.textContent = friendlyError(e.code);
+        errEl.style.display = 'block';
+      }
+    });
+
+    function friendlyError(code) {
+      const map = {
+        'auth/user-not-found':    'No account found with that email.',
+        'auth/wrong-password':    'Incorrect password.',
+        'auth/email-already-in-use': 'Email already in use. Try signing in.',
+        'auth/weak-password':     'Password must be at least 6 characters.',
+        'auth/invalid-email':     'Please enter a valid email address.',
+      };
+      return map[code] || 'Authentication failed. Please try again.';
+    }
+  </script>
+</body>
+</html>

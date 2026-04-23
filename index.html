@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QuickPoll — Real-time polls, instantly</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>" />
+  <link rel="stylesheet" href="/global.css" />
+  <style>
+    .hero {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 80px 24px;
+      text-align: center;
+    }
+    .hero-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border-radius: 99px;
+      background: rgba(109,255,135,0.08);
+      border: 1px solid rgba(109,255,135,0.2);
+      color: var(--accent);
+      font-size: 0.8rem;
+      font-weight: 500;
+      letter-spacing: 0.05em;
+      margin-bottom: 28px;
+    }
+    .hero-title {
+      font-family: var(--font-head);
+      font-size: clamp(2.6rem, 7vw, 4.5rem);
+      font-weight: 800;
+      line-height: 1.05;
+      letter-spacing: -0.03em;
+      margin-bottom: 20px;
+      max-width: 700px;
+    }
+    .hero-title em {
+      font-style: normal;
+      color: var(--accent);
+    }
+    .hero-sub {
+      font-size: 1.1rem;
+      color: var(--muted);
+      max-width: 420px;
+      margin-bottom: 40px;
+      line-height: 1.7;
+      font-weight: 300;
+    }
+    .hero-cta {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .features {
+      padding: 48px 24px 80px;
+      max-width: var(--max-w);
+      margin: 0 auto;
+      width: 100%;
+    }
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-top: 40px;
+    }
+    .feature-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      transition: border-color var(--transition);
+    }
+    .feature-card:hover { border-color: rgba(109,255,135,0.3); }
+    .feature-icon { font-size: 1.8rem; margin-bottom: 12px; }
+    .feature-title {
+      font-family: var(--font-head);
+      font-weight: 700;
+      font-size: 0.95rem;
+      margin-bottom: 6px;
+    }
+    .feature-desc { color: var(--muted); font-size: 0.85rem; line-height: 1.6; }
+    .section-label {
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      font-weight: 500;
+    }
+    .footer {
+      border-top: 1px solid var(--border);
+      padding: 24px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+    @media (max-width: 540px) {
+      .features-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <!-- Nav -->
+    <nav class="nav container">
+      <div class="nav-logo">Quick<span>Poll</span></div>
+      <div class="nav-actions" id="navActions">
+        <a href="/create.html" class="btn btn-primary">+ Create Poll</a>
+      </div>
+    </nav>
+
+    <!-- Hero -->
+    <section class="hero fade-in">
+      <div class="hero-eyebrow">⚡ Real-time results</div>
+      <h1 class="hero-title">Polls that move at the <em>speed of opinion</em></h1>
+      <p class="hero-sub">Create a poll in seconds, share the link, and watch votes roll in live — no account needed.</p>
+      <div class="hero-cta">
+        <a href="/create.html" class="btn btn-primary btn-lg">Create a Poll</a>
+        <a href="#how" class="btn btn-outline btn-lg">How it works</a>
+      </div>
+    </section>
+
+    <!-- Features -->
+    <section class="features" id="how">
+      <p class="section-label text-center">How it works</p>
+      <div class="features-grid mt-3">
+        <div class="feature-card">
+          <div class="feature-icon">✏️</div>
+          <div class="feature-title">Create</div>
+          <div class="feature-desc">Write your question and add up to 5 options in under a minute.</div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🔗</div>
+          <div class="feature-title">Share</div>
+          <div class="feature-desc">Get a unique link and send it to anyone — no login required to vote.</div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">📊</div>
+          <div class="feature-title">Watch Live</div>
+          <div class="feature-desc">Results update in real-time as votes come in, powered by Firebase.</div>
+        </div>
+      </div>
+    </section>
+
+    <footer class="footer">
+      Built with Firebase &amp; Vercel · <span id="year"></span>
+    </footer>
+  </div>
+
+  <script type="module">
+   import { onAuthChange } from './auth.js';
+
+    document.getElementById('year').textContent = new Date().getFullYear();
+
+    onAuthChange((user) => {
+      const nav = document.getElementById('navActions');
+      if (user) {
+        nav.innerHTML = `
+          <a href="/dashboard.html" class="btn btn-ghost">My Polls</a>
+          <a href="/create.html" class="btn btn-primary">+ Create Poll</a>
+        `;
+      } else {
+        nav.innerHTML = `
+          <a href="/dashboard.html" class="btn btn-ghost">Sign In</a>
+          <a href="/create.html" class="btn btn-primary">+ Create Poll</a>
+        `;
+      }
+    });
+  </script>
+</body>
+</html>

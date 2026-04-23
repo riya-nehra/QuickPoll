@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vote — QuickPoll</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>" />
+  <link rel="stylesheet" href="/global.css" />
+  <style>
+    .main { flex: 1; padding: 48px 24px; }
+    .poll-question {
+      font-family: var(--font-head);
+      font-size: 1.8rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      line-height: 1.2;
+      margin-bottom: 32px;
+    }
+    .options-list { display: flex; flex-direction: column; gap: 12px; }
+    .option-label {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 16px 20px;
+      background: var(--surface2);
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: all var(--transition);
+      font-size: 0.95rem;
+    }
+    .option-label:hover { border-color: var(--accent); }
+    .option-label input[type="radio"] { display: none; }
+    .option-label.selected {
+      border-color: var(--accent);
+      background: rgba(109,255,135,0.06);
+      color: var(--accent);
+    }
+    .radio-circle {
+      width: 20px; height: 20px;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+      flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      transition: all var(--transition);
+    }
+    .selected .radio-circle {
+      border-color: var(--accent);
+      background: var(--accent);
+    }
+    .selected .radio-circle::after {
+      content: '';
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #0d0d0f;
+    }
+    .already-voted {
+      text-align: center;
+      padding: 40px 20px;
+    }
+    .already-voted-icon { font-size: 2.5rem; margin-bottom: 12px; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <nav class="nav container">
+      <a href="/" class="nav-logo">Quick<span>Poll</span></a>
+      <div class="nav-actions" id="navActions"></div>
+    </nav>
+
+    <main class="main">
+      <div class="container">
+        <div id="loadingEl"><div class="spinner"></div></div>
+        <div id="errorEl" class="msg msg-error" style="display:none"></div>
+
+        <!-- Already voted -->
+        <div id="alreadyVoted" class="card fade-in already-voted" style="display:none">
+          <div class="already-voted-icon">✅</div>
+          <h2 class="page-title" style="font-size:1.4rem">You've already voted!</h2>
+          <p class="text-muted mt-2">You can still watch the live results.</p>
+          <a id="resultsLinkVoted" href="#" class="btn btn-primary mt-4">View Results →</a>
+        </div>
+
+        <!-- Poll card -->
+        <div id="pollCard" style="display:none" class="fade-in">
+          <div class="card">
+            <div class="badge mb-2">📊 Open Poll</div>
+            <h1 class="poll-question" id="pollQuestion"></h1>
+
+            <div class="options-list" id="optionsList"></div>
+
+            <div id="voteError" class="msg msg-error mt-3" style="display:none"></div>
+
+            <button class="btn btn-primary btn-lg w-full mt-4" id="voteBtn" disabled>
+              Submit Vote
+            </button>
+          </div>
+
+          <p class="text-muted text-center mt-3" style="font-size:0.82rem">
+            Your vote is anonymous · one vote per device
+          </p>
+          <div class="text-center mt-3">
+            <a id="resultsLink" href="#" class="btn btn-ghost">View live results →</a>
+          </div>
+        </div>
+
+        <!-- Voted success -->
+        <div id="votedCard" class="card fade-in" style="display:none; text-align:center">
+          <div style="font-size:2.5rem; margin-bottom:12px">🗳️</div>
+          <h2 class="page-title" style="font-size:1.5rem">Vote submitted!</h2>
+          <p class="text-muted mt-2">Thanks for voting. See how the results are looking.</p>
+          <a id="resultsLinkAfter" href="#" class="btn btn-primary btn-lg mt-4">
+            View Live Results →
+          </a>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script type="module">
+    import { getPoll, submitVote } from './polls.js';
+    import { onAuthChange } from './auth.js';
+
+    const params = new URLSearchParams(location.search);
+    const pollId = params.get('id');
+
+    if (!pollId) {
+      showError('No poll ID provided. <a href="/">Go home</a>');
+    } else {
+      init();
+    }
+
+    onAuthChange((user) => {
+      const nav = document.getElementById('navActions');
+      nav.innerHTML = user
+        ? `<a href="/dashboard.html" class="btn btn-ghost">My Polls</a>`
+        : `<a href="/dashboard.html" class="btn btn-ghost">Sign In</a>`;
+    });
+
+    async function init() {
+      const poll = await getPoll(pollId);
+      document.getElementById('loadingEl').style.display = 'none';
+
+      if (!poll) { showError('Poll not found.'); return; }
+
+      // Duplicate vote check (localStorage)
+      const votedKey = `qp_voted_${pollId}`;
+      if (localStorage.getItem(votedKey)) {
+        document.getElementById('alreadyVoted').style.display = 'block';
+        document.getElementById('resultsLinkVoted').href = `/results.html?id=${pollId}`;
+        return;
+      }
+
+      // Set results link
+      document.getElementById('resultsLink').href = `/results.html?id=${pollId}`;
+
+      // Render poll
+      document.getElementById('pollQuestion').textContent = poll.question;
+      const list = document.getElementById('optionsList');
+      let selectedKey = null;
+
+      Object.entries(poll.options).forEach(([key, opt]) => {
+        const label = document.createElement('label');
+        label.className = 'option-label';
+        label.innerHTML = `
+          <input type="radio" name="poll_option" value="${key}" />
+          <span class="radio-circle"></span>
+          <span>${opt.text}</span>
+        `;
+        label.addEventListener('click', () => {
+          document.querySelectorAll('.option-label').forEach(l => l.classList.remove('selected'));
+          label.classList.add('selected');
+          selectedKey = key;
+          document.getElementById('voteBtn').disabled = false;
+        });
+        list.appendChild(label);
+      });
+
+      document.getElementById('pollCard').style.display = 'block';
+
+      // Submit vote
+      document.getElementById('voteBtn').addEventListener('click', async () => {
+        if (!selectedKey) return;
+        const btn = document.getElementById('voteBtn');
+        btn.disabled = true;
+        btn.textContent = 'Submitting…';
+
+        try {
+          await submitVote(pollId, selectedKey);
+          localStorage.setItem(votedKey, '1');
+          document.getElementById('pollCard').style.display = 'none';
+          const after = document.getElementById('votedCard');
+          after.style.display = 'block';
+          document.getElementById('resultsLinkAfter').href = `/results.html?id=${pollId}`;
+        } catch (e) {
+          document.getElementById('voteError').style.display = 'block';
+          document.getElementById('voteError').textContent = 'Vote failed. Please try again.';
+          btn.disabled = false;
+          btn.textContent = 'Submit Vote';
+        }
+      });
+    }
+
+    function showError(msg) {
+      document.getElementById('loadingEl').style.display = 'none';
+      const el = document.getElementById('errorEl');
+      el.innerHTML = msg;
+      el.style.display = 'block';
+    }
+  </script>
+</body>
+</html>
