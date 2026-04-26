@@ -91,9 +91,9 @@ Click **Publish**.
 
 ## Step 7 — Create Firestore Index (optional)
 
-The dashboard queries polls by `creatorId` ordered by `createdAt`. Firestore may
-prompt you to create a composite index the first time this query runs. Click the
-link in the browser console error, or create it manually:
+The app now sorts a signed-in user's polls in the browser, so the dashboard can
+work without a composite Firestore index. You only need this index if you want
+Firestore itself to handle the `creatorId + createdAt` ordering:
 
 - Collection: `polls`
 - Fields: `creatorId ASC`, `createdAt DESC`

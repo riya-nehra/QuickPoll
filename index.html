@@ -108,9 +108,12 @@
   <div class="page">
     <!-- Nav -->
     <nav class="nav container">
-      <div class="nav-logo">Quick<span>Poll</span></div>
+      <div class="nav-logo"><a href="/">Quick<span>Poll</span></a></div>
       <div class="nav-actions" id="navActions">
-        <a href="/create.html" class="btn btn-primary">+ Create Poll</a>
+        <a href="/signin.html" class="btn btn-outline" id="signInBtn">Sign In</a>
+        <a href="/signup.html" class="btn btn-primary" id="signUpBtn">Sign Up</a>
+        <a href="/dashboard.html" class="btn btn-primary" id="dashboardBtn" style="display:none">Dashboard</a>
+        <button class="btn btn-outline" id="logoutBtn" style="display:none">Logout</button>
       </div>
     </nav>
 
@@ -153,22 +156,35 @@
   </div>
 
   <script type="module">
-   import { onAuthChange } from './auth.js';
+    import { onAuthChange, logOut } from './auth.js';
 
     document.getElementById('year').textContent = new Date().getFullYear();
 
+    const signInBtn = document.getElementById('signInBtn');
+    const signUpBtn = document.getElementById('signUpBtn');
+    const dashboardBtn = document.getElementById('dashboardBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
+
     onAuthChange((user) => {
-      const nav = document.getElementById('navActions');
       if (user) {
-        nav.innerHTML = `
-          <a href="/dashboard.html" class="btn btn-ghost">My Polls</a>
-          <a href="/create.html" class="btn btn-primary">+ Create Poll</a>
-        `;
+        signInBtn.style.display = 'none';
+        signUpBtn.style.display = 'none';
+        dashboardBtn.style.display = 'inline-block';
+        logoutBtn.style.display = 'inline-block';
       } else {
-        nav.innerHTML = `
-          <a href="/dashboard.html" class="btn btn-ghost">Sign In</a>
-          <a href="/create.html" class="btn btn-primary">+ Create Poll</a>
-        `;
+        signInBtn.style.display = 'inline-block';
+        signUpBtn.style.display = 'inline-block';
+        dashboardBtn.style.display = 'none';
+        logoutBtn.style.display = 'none';
+      }
+    });
+
+    logoutBtn.addEventListener('click', async () => {
+      try {
+        await logOut();
+        window.location.href = '/';
+      } catch (error) {
+        console.error('Logout error:', error);
       }
     });
   </script>

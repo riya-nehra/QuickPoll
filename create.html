@@ -63,7 +63,12 @@
   <div class="page">
     <nav class="nav container">
       <a href="/" class="nav-logo">Quick<span>Poll</span></a>
-      <div class="nav-actions" id="navActions"></div>
+      <div class="nav-actions" id="navActions">
+        <a href="/signin.html" class="btn btn-outline" id="signInBtn">Sign In</a>
+        <a href="/signup.html" class="btn btn-primary" id="signUpBtn">Sign Up</a>
+        <a href="/dashboard.html" class="btn btn-primary" id="dashboardBtn" style="display:none">Dashboard</a>
+        <button class="btn btn-outline" id="logoutBtn" style="display:none">Logout</button>
+      </div>
     </nav>
 
     <main class="main">
@@ -134,22 +139,49 @@
 
   <script type="module">
     import { createPoll } from './polls.js';
-    import { onAuthChange } from './auth.js';
+    import { currentUser as getCurrentUser, ensureUserProfile, onAuthChange, logOut } from './auth.js';
 
     let currentUser = null;
+    let currentUserProfile = null;
     let optionCount = 2;
     const MAX_OPTIONS = 5;
 
-    // Nav + auth note
-    onAuthChange((user) => {
+    const signInBtn = document.getElementById('signInBtn');
+    const signUpBtn = document.getElementById('signUpBtn');
+    const dashboardBtn = document.getElementById('dashboardBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
+
+    onAuthChange(async (user) => {
       currentUser = user;
-      const nav = document.getElementById('navActions');
       const note = document.getElementById('authNote');
       if (user) {
-        nav.innerHTML = `<a href="/dashboard.html" class="btn btn-ghost">My Polls</a>`;
+        signInBtn.style.display = 'none';
+        signUpBtn.style.display = 'none';
+        dashboardBtn.style.display = 'inline-block';
+        logoutBtn.style.display = 'inline-block';
         note.style.display = 'block';
+        try {
+          currentUserProfile = await ensureUserProfile(user);
+        } catch (error) {
+          currentUserProfile = null;
+          console.error('Failed to load user profile on create page:', error);
+        }
       } else {
-        nav.innerHTML = `<a href="/dashboard.html" class="btn btn-ghost">Sign In</a>`;
+        currentUserProfile = null;
+        signInBtn.style.display = 'inline-block';
+        signUpBtn.style.display = 'inline-block';
+        dashboardBtn.style.display = 'none';
+        logoutBtn.style.display = 'none';
+        note.style.display = 'none';
+      }
+    });
+
+    logoutBtn.addEventListener('click', async () => {
+      try {
+        await logOut();
+        window.location.href = '/';
+      } catch (error) {
+        console.error('Logout error:', error);
       }
     });
 
@@ -197,10 +229,17 @@
       btn.textContent = 'Creating…';
 
       try {
+        const effectiveUser = currentUser || getCurrentUser();
+        if (effectiveUser && !currentUserProfile) {
+          currentUserProfile = await ensureUserProfile(effectiveUser);
+        }
+
+        const creatorName = currentUserProfile ? currentUserProfile.username : null;
         const pollId = await createPoll({
           question,
           options,
-          creatorId: currentUser ? currentUser.uid : null,
+          creatorId: effectiveUser ? effectiveUser.uid : null,
+          creatorName: creatorName,
         });
 
         const shareUrl = `${location.origin}/vote.html?id=${pollId}`;

@@ -3,18 +3,18 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Dashboard — QuickPoll</title>
+  <title>Dashboard - QuickPoll</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>" />
   <link rel="stylesheet" href="/global.css" />
   <style>
     .main { flex: 1; padding: 48px 24px; }
     .page-title {
       font-family: var(--font-head);
-      font-size: 1.8rem; font-weight: 800;
-      letter-spacing: -0.02em; margin-bottom: 8px;
+      font-size: 1.8rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin-bottom: 8px;
     }
-
-    /* Auth forms */
     .auth-tabs { display: flex; gap: 0; margin-bottom: 24px; }
     .auth-tab {
       flex: 1;
@@ -27,13 +27,12 @@
       transition: all var(--transition);
     }
     .auth-tab:first-child { border-radius: var(--radius) 0 0 var(--radius); }
-    .auth-tab:last-child  { border-radius: 0 var(--radius) var(--radius) 0; border-left: none; }
+    .auth-tab:last-child { border-radius: 0 var(--radius) var(--radius) 0; border-left: none; }
     .auth-tab.active { background: var(--accent); color: #0d0d0f; border-color: var(--accent); }
-
-    /* Poll list */
     .poll-list { display: flex; flex-direction: column; gap: 12px; margin-top: 20px; }
     .poll-item {
-      display: flex; align-items: center;
+      display: flex;
+      align-items: center;
       justify-content: space-between;
       padding: 16px 20px;
       background: var(--surface);
@@ -46,13 +45,22 @@
     .poll-item-text { flex: 1; min-width: 0; }
     .poll-item-q {
       font-weight: 500;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
-    .poll-item-meta { color: var(--muted); font-size: 0.78rem; margin-top: 3px; }
+    .poll-item-meta {
+      color: var(--muted);
+      font-size: 0.78rem;
+      margin-top: 3px;
+      line-height: 1.5;
+    }
     .poll-item-actions { display: flex; gap: 8px; flex-shrink: 0; }
-
     .google-btn {
-      display: flex; align-items: center; justify-content: center; gap: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
       background: var(--surface2);
       border: 1px solid var(--border);
       color: var(--text);
@@ -69,14 +77,18 @@
   <div class="page">
     <nav class="nav container">
       <a href="/" class="nav-logo">Quick<span>Poll</span></a>
-      <div class="nav-actions" id="navActions"></div>
+      <div class="nav-actions" id="navActions">
+        <a href="/signin.html" class="btn btn-outline" id="signInBtn">Sign In</a>
+        <a href="/signup.html" class="btn btn-primary" id="signUpBtn">Sign Up</a>
+        <a href="/dashboard.html" class="btn btn-primary" id="dashboardBtn" style="display:none">Dashboard</a>
+        <button class="btn btn-outline" id="logoutBtn" style="display:none">Logout</button>
+      </div>
     </nav>
 
     <main class="main">
       <div class="container">
         <div id="loadingEl"><div class="spinner"></div></div>
 
-        <!-- Auth panel -->
         <div id="authPanel" style="display:none" class="fade-in">
           <h1 class="page-title">Sign in</h1>
           <p class="text-muted mt-1">Sign in to save and manage your polls.</p>
@@ -89,12 +101,16 @@
 
             <div id="authError" class="msg msg-error mb-3" style="display:none"></div>
 
-            <div class="form-group">
-              <label class="form-label">Email</label>
-              <input type="email" id="authEmail" class="form-input" placeholder="you@example.com" />
+            <div class="form-group" id="usernameGroup" style="display:none">
+              <label class="form-label" for="authUsername">Username</label>
+              <input type="text" id="authUsername" class="form-input" placeholder="Choose a username" maxlength="20" />
             </div>
             <div class="form-group mt-2">
-              <label class="form-label">Password</label>
+              <label class="form-label" for="authIdentifier" id="authIdentifierLabel">Email or Username</label>
+              <input type="text" id="authIdentifier" class="form-input" placeholder="you@example.com or your_username" />
+            </div>
+            <div class="form-group mt-2">
+              <label class="form-label" for="authPassword">Password</label>
               <input type="password" id="authPassword" class="form-input" placeholder="••••••••" />
             </div>
             <button class="btn btn-primary w-full mt-3" id="authSubmitBtn">Sign In</button>
@@ -108,18 +124,32 @@
           </div>
         </div>
 
-        <!-- Dashboard panel -->
         <div id="dashPanel" style="display:none" class="fade-in">
           <div class="flex items-center justify-between">
-            <h1 class="page-title">My Polls</h1>
+            <h1 class="page-title">Dashboard</h1>
             <a href="/create.html" class="btn btn-primary">+ New Poll</a>
           </div>
           <p class="text-muted mt-1" id="userEmail"></p>
 
-          <div id="pollList" class="poll-list"></div>
-          <div id="emptyState" class="text-center mt-6" style="display:none">
-            <p class="text-muted">You haven't created any polls yet.</p>
-            <a href="/create.html" class="btn btn-outline mt-3">Create your first poll →</a>
+          <div class="mt-4">
+            <h2 class="page-title" style="font-size:1.3rem">My Polls</h2>
+            <div id="myPollsError" class="msg msg-error mt-3" style="display:none"></div>
+            <div id="pollList" class="poll-list"></div>
+            <div id="emptyState" class="text-center mt-6" style="display:none">
+              <p class="text-muted">You haven't created any polls yet.</p>
+              <a href="/create.html" class="btn btn-outline mt-3">Create your first poll -></a>
+            </div>
+          </div>
+        </div>
+
+        <div id="allPollsPanel" class="fade-in" style="margin-top: 48px;">
+          <h2 class="page-title">All Polls</h2>
+          <p class="text-muted mt-1">Browse every poll currently stored in the database.</p>
+
+          <div id="allPollsError" class="msg msg-error mt-3" style="display:none"></div>
+          <div id="allPollList" class="poll-list"></div>
+          <div id="allPollsEmpty" class="text-center mt-6" style="display:none">
+            <p class="text-muted">No polls available yet. Be the first to create one!</p>
           </div>
         </div>
       </div>
@@ -127,33 +157,83 @@
   </div>
 
   <script type="module">
-    import { signIn, signUp, googleSignIn, logOut, onAuthChange } from './auth.js';
-    import { listenToUserPolls } from './polls.js';
+    import {
+      createUserProfile,
+      googleSignIn,
+      logOut,
+      onAuthChange,
+      resolveSignInEmail,
+      signIn,
+      signUp,
+    } from './auth.js';
+    import { listenToAllPolls, listenToUserPolls } from './polls.js';
 
     let unsubPolls = null;
+    let unsubAllPolls = null;
     let activeTab = 'signIn';
+
+    const signInBtn = document.getElementById('signInBtn');
+    const signUpBtn = document.getElementById('signUpBtn');
+    const dashboardBtn = document.getElementById('dashboardBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const usernameGroup = document.getElementById('usernameGroup');
+    const authSubmitBtn = document.getElementById('authSubmitBtn');
+    const authIdentifierLabel = document.getElementById('authIdentifierLabel');
+    const authIdentifierInput = document.getElementById('authIdentifier');
+
+    startAllPollsListener();
 
     onAuthChange((user) => {
       document.getElementById('loadingEl').style.display = 'none';
+      updateNav(user);
+
       if (user) {
         showDashboard(user);
       } else {
         showAuth();
       }
+    });
 
-      const nav = document.getElementById('navActions');
-      nav.innerHTML = user
-        ? `<button class="btn btn-ghost" id="signOutBtn">Sign Out</button>`
-        : '';
-      if (user) {
-        document.getElementById('signOutBtn').addEventListener('click', () => logOut());
+    logoutBtn.addEventListener('click', async () => {
+      try {
+        await logOut();
+        window.location.href = '/';
+      } catch (error) {
+        console.error('Logout error:', error);
       }
     });
+
+    function updateNav(user) {
+      signInBtn.style.display = user ? 'none' : 'inline-block';
+      signUpBtn.style.display = user ? 'none' : 'inline-block';
+      dashboardBtn.style.display = user ? 'inline-block' : 'none';
+      logoutBtn.style.display = user ? 'inline-block' : 'none';
+    }
+
+    function startAllPollsListener() {
+      if (unsubAllPolls) return;
+
+      hideListError('allPollsError');
+      unsubAllPolls = listenToAllPolls(
+        (polls) => {
+          renderPollList('allPollList', 'allPollsEmpty', polls, { showCreator: true });
+        },
+        (error) => {
+          console.error('All polls listener failed:', error);
+          showListError('allPollsError', 'Unable to load all polls right now. Check Firestore rules and refresh.');
+        }
+      );
+    }
 
     function showAuth() {
       document.getElementById('authPanel').style.display = 'block';
       document.getElementById('dashPanel').style.display = 'none';
-      if (unsubPolls) { unsubPolls(); unsubPolls = null; }
+      document.getElementById('userEmail').textContent = '';
+
+      if (unsubPolls) {
+        unsubPolls();
+        unsubPolls = null;
+      }
     }
 
     function showDashboard(user) {
@@ -161,89 +241,153 @@
       document.getElementById('dashPanel').style.display = 'block';
       document.getElementById('userEmail').textContent = user.email || user.displayName || '';
 
-      unsubPolls = listenToUserPolls(user.uid, (polls) => {
-        const list = document.getElementById('pollList');
-        const empty = document.getElementById('emptyState');
-        if (polls.length === 0) {
-          list.innerHTML = '';
-          empty.style.display = 'block';
-          return;
+      if (unsubPolls) {
+        unsubPolls();
+      }
+
+      hideListError('myPollsError');
+      unsubPolls = listenToUserPolls(
+        user.uid,
+        (polls) => {
+          renderPollList('pollList', 'emptyState', polls, { showCreator: false });
+        },
+        (error) => {
+          console.error('My polls listener failed:', error);
+          showListError('myPollsError', 'Unable to load your polls right now. Check Firestore rules and refresh.');
         }
-        empty.style.display = 'none';
-        list.innerHTML = polls.map(p => {
-          const total = p.totalVotes || 0;
-          const date = p.createdAt?.toDate
-            ? p.createdAt.toDate().toLocaleDateString()
-            : 'Just now';
-          return `
-            <div class="poll-item">
-              <div class="poll-item-text">
-                <div class="poll-item-q">${p.question}</div>
-                <div class="poll-item-meta">${total} vote${total !== 1 ? 's' : ''} · Created ${date}</div>
-              </div>
-              <div class="poll-item-actions">
-                <a href="/results.html?id=${p.id}" class="btn btn-outline" style="padding:8px 14px;font-size:0.82rem">Results</a>
-                <a href="/vote.html?id=${p.id}" class="btn btn-ghost" style="padding:8px 14px;font-size:0.82rem">Vote</a>
-              </div>
-            </div>
-          `;
-        }).join('');
-      });
+      );
     }
 
-    // Tabs
     document.getElementById('tabSignIn').addEventListener('click', () => {
       activeTab = 'signIn';
       document.getElementById('tabSignIn').classList.add('active');
       document.getElementById('tabSignUp').classList.remove('active');
-      document.getElementById('authSubmitBtn').textContent = 'Sign In';
+      usernameGroup.style.display = 'none';
+      authIdentifierLabel.textContent = 'Email or Username';
+      authIdentifierInput.placeholder = 'you@example.com or your_username';
+      authSubmitBtn.textContent = 'Sign In';
     });
+
     document.getElementById('tabSignUp').addEventListener('click', () => {
       activeTab = 'signUp';
       document.getElementById('tabSignUp').classList.add('active');
       document.getElementById('tabSignIn').classList.remove('active');
-      document.getElementById('authSubmitBtn').textContent = 'Create Account';
+      usernameGroup.style.display = 'block';
+      authIdentifierLabel.textContent = 'Email';
+      authIdentifierInput.placeholder = 'you@example.com';
+      authSubmitBtn.textContent = 'Create Account';
     });
 
-    // Email auth
-    document.getElementById('authSubmitBtn').addEventListener('click', async () => {
-      const email = document.getElementById('authEmail').value.trim();
-      const pw    = document.getElementById('authPassword').value;
+    authSubmitBtn.addEventListener('click', async () => {
+      const identifier = document.getElementById('authIdentifier').value.trim();
+      const password = document.getElementById('authPassword').value;
+      const username = document.getElementById('authUsername').value.trim();
       const errEl = document.getElementById('authError');
+
       errEl.style.display = 'none';
+      authSubmitBtn.disabled = true;
+      authSubmitBtn.textContent = activeTab === 'signIn' ? 'Signing In...' : 'Creating Account...';
 
       try {
         if (activeTab === 'signIn') {
-          await signIn(email, pw);
+          const email = await resolveSignInEmail(identifier);
+          await signIn(email, password);
         } else {
-          await signUp(email, pw);
+          if (!username) {
+            throw { code: 'auth/missing-username' };
+          }
+          const userCredential = await signUp(identifier, password);
+          await createUserProfile(userCredential.user, username);
         }
       } catch (e) {
         errEl.textContent = friendlyError(e.code);
         errEl.style.display = 'block';
+      } finally {
+        authSubmitBtn.disabled = false;
+        authSubmitBtn.textContent = activeTab === 'signIn' ? 'Sign In' : 'Create Account';
       }
     });
 
-    // Google auth
     document.getElementById('googleBtn').addEventListener('click', async () => {
+      const errEl = document.getElementById('authError');
+      errEl.style.display = 'none';
+
       try {
         await googleSignIn();
       } catch (e) {
-        const errEl = document.getElementById('authError');
         errEl.textContent = friendlyError(e.code);
         errEl.style.display = 'block';
       }
     });
 
+    function renderPollList(listId, emptyId, polls, options = {}) {
+      const list = document.getElementById(listId);
+      const empty = document.getElementById(emptyId);
+      const showCreator = options.showCreator !== false;
+
+      if (polls.length === 0) {
+        list.innerHTML = '';
+        empty.style.display = 'block';
+        return;
+      }
+
+      empty.style.display = 'none';
+      list.innerHTML = polls.map((poll) => {
+        const total = poll.totalVotes || 0;
+        const date = poll.createdAt?.toDate
+          ? poll.createdAt.toDate().toLocaleDateString()
+          : 'Just now';
+        const creatorLine = showCreator
+          ? `Created by ${escapeHtml(poll.creatorName || 'Anonymous')} · `
+          : '';
+
+        return `
+          <div class="poll-item">
+            <div class="poll-item-text">
+              <div class="poll-item-q">${escapeHtml(poll.question || 'Untitled poll')}</div>
+              <div class="poll-item-meta">${creatorLine}${total} vote${total !== 1 ? 's' : ''} · Created ${date}</div>
+            </div>
+            <div class="poll-item-actions">
+              <a href="/results.html?id=${poll.id}" class="btn btn-outline" style="padding:8px 14px;font-size:0.82rem">Results</a>
+              <a href="/vote.html?id=${poll.id}" class="btn btn-ghost" style="padding:8px 14px;font-size:0.82rem">Vote</a>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
     function friendlyError(code) {
       const map = {
-        'auth/user-not-found':    'No account found with that email.',
-        'auth/wrong-password':    'Incorrect password.',
+        'auth/user-not-found': 'No account found with that email or username.',
+        'auth/wrong-password': 'Incorrect password.',
+        'auth/invalid-credential': 'Invalid username, email, or password.',
         'auth/email-already-in-use': 'Email already in use. Try signing in.',
-        'auth/weak-password':     'Password must be at least 6 characters.',
-        'auth/invalid-email':     'Please enter a valid email address.',
+        'auth/weak-password': 'Password must be at least 6 characters.',
+        'auth/invalid-email': 'Please enter a valid email address.',
+        'auth/missing-username': 'Please choose a username before creating your account.',
       };
       return map[code] || 'Authentication failed. Please try again.';
+    }
+
+    function showListError(id, message) {
+      const el = document.getElementById(id);
+      el.textContent = message;
+      el.style.display = 'block';
+    }
+
+    function hideListError(id) {
+      const el = document.getElementById(id);
+      el.textContent = '';
+      el.style.display = 'none';
     }
   </script>
 </body>
