@@ -30,6 +30,8 @@
       font-size: 0.95rem;
     }
     .option-label:hover { border-color: var(--accent); }
+    .option-label.locked { cursor: default; }
+    .option-label.locked:hover { border-color: var(--border); }
     .option-label input[type="radio"] { display: none; }
     .option-label.selected {
       border-color: var(--accent);
@@ -53,6 +55,36 @@
       width: 8px; height: 8px;
       border-radius: 50%;
       background: #0d0d0f;
+    }
+    .option-label.correct {
+      border-color: var(--accent);
+      background: rgba(109,255,135,0.12);
+      color: var(--accent);
+    }
+    .option-label.incorrect {
+      border-color: var(--accent2);
+      background: rgba(255,107,107,0.12);
+      color: var(--accent2);
+    }
+    .answer-feedback {
+      display: none;
+      margin-top: 18px;
+      padding: 14px 16px;
+      border-radius: var(--radius);
+      font-size: 0.92rem;
+      line-height: 1.5;
+    }
+    .answer-feedback.correct {
+      display: block;
+      background: rgba(109,255,135,0.1);
+      color: var(--accent);
+      border: 1px solid rgba(109,255,135,0.25);
+    }
+    .answer-feedback.incorrect {
+      display: block;
+      background: rgba(255,107,107,0.1);
+      color: var(--accent2);
+      border: 1px solid rgba(255,107,107,0.25);
     }
     .already-voted {
       text-align: center;
@@ -85,9 +117,12 @@
         <div id="pollCard" style="display:none" class="fade-in">
           <div class="card">
             <div class="badge mb-2">📊 Open Poll</div>
+            <p class="text-muted" style="font-size: 0.9rem; margin-bottom: 12px;" id="creatorInfo"></p>
+            <div id="categoryTagsInfo" style="margin-bottom: 16px;"></div>
             <h1 class="poll-question" id="pollQuestion"></h1>
 
             <div class="options-list" id="optionsList"></div>
+            <div id="answerFeedback" class="answer-feedback"></div>
 
             <div id="voteError" class="msg msg-error mt-3" style="display:none"></div>
 
@@ -147,6 +182,8 @@
       const votedKey = `qp_voted_${pollId}`;
       if (localStorage.getItem(votedKey)) {
         document.getElementById('alreadyVoted').style.display = 'block';
+        document.querySelector('#alreadyVoted h2').textContent =
+          poll.pollType === 'quiz' ? 'You already answered this quiz!' : "You've already voted!";
         document.getElementById('resultsLinkVoted').href = `/results.html?id=${pollId}`;
         return;
       }
@@ -156,22 +193,58 @@
 
       // Render poll
       document.getElementById('pollQuestion').textContent = poll.question;
+      
+      // Display creator info
+      const creatorInfo = document.getElementById('creatorInfo');
+      if (poll.creatorName) {
+        creatorInfo.textContent = `👤 Created by ${poll.creatorName}`;
+      } else {
+        creatorInfo.textContent = '👤 Created by Anonymous';
+      }
+      
+      // Display category and tags
+      const categoryTagsInfo = document.getElementById('categoryTagsInfo');
+      let infoHtml = '';
+      if (poll.category) {
+        infoHtml += `<span style="display: inline-block; background: rgba(109,255,135,0.1); border: 1px solid rgba(109,255,135,0.3); color: var(--accent); padding: 4px 10px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; margin-right: 8px;">${escapeHtml(poll.category)}</span>`;
+      }
+      if (poll.tags && poll.tags.length > 0) {
+        infoHtml += poll.tags.map(tag => `<span style="display: inline-block; background: rgba(109,255,135,0.08); border: 1px solid rgba(109,255,135,0.2); color: var(--accent); padding: 2px 8px; border-radius: 12px; font-size: 0.7rem; margin-right: 6px; font-weight: 500;">#${escapeHtml(tag)}</span>`).join('');
+      }
+      if (infoHtml) {
+        categoryTagsInfo.innerHTML = infoHtml;
+      }
+      
       const list = document.getElementById('optionsList');
+      const isQuiz = poll.pollType === 'quiz';
+      const voteBtn = document.getElementById('voteBtn');
+      const answerFeedback = document.getElementById('answerFeedback');
       let selectedKey = null;
+      let answerLocked = false;
+
+      document.querySelector('.badge').textContent = isQuiz ? 'Quiz Question' : 'Open Poll';
+      voteBtn.style.display = isQuiz ? 'none' : 'inline-flex';
 
       Object.entries(poll.options).forEach(([key, opt]) => {
         const label = document.createElement('label');
         label.className = 'option-label';
+        label.dataset.optionKey = key;
         label.innerHTML = `
           <input type="radio" name="poll_option" value="${key}" />
           <span class="radio-circle"></span>
-          <span>${opt.text}</span>
+          <span>${escapeHtml(opt.text)}</span>
         `;
-        label.addEventListener('click', () => {
+        label.addEventListener('click', async () => {
+          if (answerLocked) return;
           document.querySelectorAll('.option-label').forEach(l => l.classList.remove('selected'));
           label.classList.add('selected');
           selectedKey = key;
-          document.getElementById('voteBtn').disabled = false;
+          voteBtn.disabled = false;
+
+          if (isQuiz) {
+            answerLocked = true;
+            answerLocked = await submitQuizAnswer(poll, selectedKey, votedKey, answerFeedback);
+          }
         });
         list.appendChild(label);
       });
@@ -181,9 +254,8 @@
       // Submit vote
       document.getElementById('voteBtn').addEventListener('click', async () => {
         if (!selectedKey) return;
-        const btn = document.getElementById('voteBtn');
-        btn.disabled = true;
-        btn.textContent = 'Submitting…';
+        voteBtn.disabled = true;
+        voteBtn.textContent = 'Submitting...';
 
         try {
           await submitVote(pollId, selectedKey);
@@ -195,10 +267,45 @@
         } catch (e) {
           document.getElementById('voteError').style.display = 'block';
           document.getElementById('voteError').textContent = 'Vote failed. Please try again.';
-          btn.disabled = false;
-          btn.textContent = 'Submit Vote';
+          voteBtn.disabled = false;
+          voteBtn.textContent = 'Submit Vote';
         }
       });
+    }
+
+    async function submitQuizAnswer(poll, selectedKey, votedKey, answerFeedback) {
+      document.getElementById('voteError').style.display = 'none';
+      document.querySelectorAll('.option-label').forEach(label => {
+        label.classList.add('locked');
+      });
+
+      try {
+        await submitVote(pollId, selectedKey);
+        localStorage.setItem(votedKey, selectedKey);
+
+        const correctKey = poll.correctOptionKey;
+        const correctText = poll.options[correctKey]?.text || 'the correct answer';
+        const isCorrect = selectedKey === correctKey;
+
+        document.querySelectorAll('.option-label').forEach(label => {
+          const key = label.dataset.optionKey;
+          if (key === correctKey) label.classList.add('correct');
+          if (key === selectedKey && !isCorrect) label.classList.add('incorrect');
+        });
+
+        answerFeedback.className = `answer-feedback ${isCorrect ? 'correct' : 'incorrect'}`;
+        answerFeedback.innerHTML = isCorrect
+          ? 'Correct answer.'
+          : `Wrong answer. Correct answer: <strong>${escapeHtml(correctText)}</strong>`;
+        return true;
+      } catch (e) {
+        document.getElementById('voteError').style.display = 'block';
+        document.getElementById('voteError').textContent = 'Answer failed. Please try again.';
+        document.querySelectorAll('.option-label').forEach(label => {
+          label.classList.remove('locked', 'selected');
+        });
+        return false;
+      }
     }
 
     function showError(msg) {
@@ -206,6 +313,15 @@
       const el = document.getElementById('errorEl');
       el.innerHTML = msg;
       el.style.display = 'block';
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
     }
   </script>
 </body>

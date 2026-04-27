@@ -82,6 +82,19 @@
     }
     .result-label { font-weight: 500; }
     .result-pct   { color: var(--accent); font-weight: 600; font-family: var(--font-head); }
+    .correct-answer-badge {
+      display: inline-block;
+      margin-left: 8px;
+      padding: 2px 7px;
+      border-radius: 99px;
+      background: rgba(109,255,135,0.12);
+      color: var(--accent);
+      border: 1px solid rgba(109,255,135,0.24);
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      vertical-align: middle;
+    }
     .bar-track {
       background: var(--surface2);
       border-radius: 99px;
@@ -127,6 +140,8 @@
           <div class="results-header">
             <div class="live-badge"><span class="live-dot"></span> Live results</div>
             <div id="categoryBadge"></div><span id="expirationBadge"></span>
+            <p class="text-muted" style="font-size: 0.9rem; margin-top: 8px;" id="creatorInfo"></p>
+            <div id="tagsInfo" style="margin-top: 12px;"></div>
             <h1 class="poll-question" id="pollQuestion"></h1>
             <p class="total-votes" id="totalVotes"></p>
           </div>
@@ -184,10 +199,28 @@
 
         document.getElementById('pollQuestion').textContent = poll.question;
         
+        // Display creator
+        const creatorInfo = document.getElementById('creatorInfo');
+        if (poll.creatorName) {
+          creatorInfo.textContent = `👤 Created by ${poll.creatorName}`;
+        } else {
+          creatorInfo.textContent = '👤 Created by Anonymous';
+        }
+        
+        // Display tags
+        const tagsInfo = document.getElementById('tagsInfo');
+        if (poll.tags && poll.tags.length > 0) {
+          tagsInfo.innerHTML = poll.tags.map(tag => `<span style="display: inline-block; background: rgba(109,255,135,0.08); border: 1px solid rgba(109,255,135,0.2); color: var(--accent); padding: 2px 8px; border-radius: 12px; font-size: 0.7rem; margin-right: 6px; font-weight: 500;">#${escapeHtml(tag)}</span>`).join('');
+        } else {
+          tagsInfo.innerHTML = '';
+        }
+        
         // Display category
         const categoryBadge = document.getElementById('categoryBadge');
         if (poll.category) {
-          categoryBadge.innerHTML = `<span class="category-badge">${poll.category}</span>`;
+          categoryBadge.innerHTML = `<span class="category-badge">${escapeHtml(poll.category)}</span>`;
+        } else {
+          categoryBadge.innerHTML = '';
         }
         
         // Display expiration
@@ -205,16 +238,17 @@
         document.getElementById('totalVotes').textContent =
           `${total} vote${total !== 1 ? 's' : ''} so far`;
 
-        renderBars(poll.options, total);
+        renderBars(poll.options, total, poll);
       });
 
       // Clean up listener on page unload
       window.addEventListener('beforeunload', unsubscribe);
     }
 
-    function renderBars(options, total) {
+    function renderBars(options, total, poll) {
       const container = document.getElementById('resultsBars');
       const entries = Object.entries(options);
+      const isQuiz = poll.pollType === 'quiz';
 
       // Find leading count
       const maxVotes = Math.max(...entries.map(([, o]) => o.votes));
@@ -222,10 +256,14 @@
       container.innerHTML = entries.map(([key, opt]) => {
         const pct = total > 0 ? Math.round((opt.votes / total) * 100) : 0;
         const isLeading = opt.votes === maxVotes && maxVotes > 0;
+        const isCorrect = isQuiz && key === poll.correctOptionKey;
         return `
           <div class="result-item">
             <div class="result-row">
-              <span class="result-label">${opt.text}${isLeading && total > 0 ? ' 🏆' : ''}</span>
+              <span class="result-label">
+                ${escapeHtml(opt.text)}${isLeading && total > 0 ? ' Winner' : ''}
+                ${isCorrect ? '<span class="correct-answer-badge">Correct</span>' : ''}
+              </span>
               <span class="result-pct">${pct}%</span>
             </div>
             <div class="bar-track">
@@ -250,6 +288,15 @@
       const el = document.getElementById('errorEl');
       el.textContent = msg;
       el.style.display = 'block';
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
     }
   </script>
 </body>

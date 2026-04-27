@@ -340,12 +340,13 @@
         const creatorLine = showCreator
           ? `Created by ${escapeHtml(poll.creatorName || 'Anonymous')} · `
           : '';
+        const typeLabel = poll.pollType === 'quiz' ? 'Quiz' : 'Poll';
 
         return `
           <div class="poll-item">
             <div class="poll-item-text">
               <div class="poll-item-q">${escapeHtml(poll.question || 'Untitled poll')}</div>
-              <div class="poll-item-meta">${creatorLine}${total} vote${total !== 1 ? 's' : ''} · Created ${date}</div>
+              <div class="poll-item-meta">${typeLabel} · ${creatorLine}${total} vote${total !== 1 ? 's' : ''} · Created ${date}</div>
             </div>
             <div class="poll-item-actions">
               <a href="/results.html?id=${poll.id}" class="btn btn-outline" style="padding:8px 14px;font-size:0.82rem">Results</a>

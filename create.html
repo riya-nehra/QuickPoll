@@ -16,8 +16,47 @@
       margin-bottom: 8px;
     }
     .options-list { display: flex; flex-direction: column; gap: 10px; }
-    .option-row { display: flex; gap: 10px; align-items: center; }
+    .type-toggle {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .type-option input { display: none; }
+    .type-card {
+      display: block;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px;
+      cursor: pointer;
+      transition: all var(--transition);
+    }
+    .type-card strong {
+      display: block;
+      font-size: 0.95rem;
+      margin-bottom: 2px;
+    }
+    .type-card span {
+      color: var(--muted);
+      font-size: 0.78rem;
+      line-height: 1.4;
+    }
+    .type-option input:checked + .type-card {
+      border-color: var(--accent);
+      background: rgba(109,255,135,0.08);
+    }
+    .option-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 10px; align-items: center; }
     .option-row .form-input { flex: 1; }
+    .correct-choice {
+      display: none;
+      align-items: center;
+      gap: 6px;
+      color: var(--muted);
+      font-size: 0.82rem;
+      white-space: nowrap;
+    }
+    .quiz-mode .correct-choice { display: inline-flex; }
+    .correct-choice input { accent-color: var(--accent); }
     .remove-btn {
       background: none;
       border: 1px solid var(--border);
@@ -57,6 +96,11 @@
       font-size: 0.85rem;
       outline: none;
     }
+    @media (max-width: 560px) {
+      .option-row { grid-template-columns: 1fr auto; }
+      .correct-choice { grid-column: 1 / -1; }
+      .type-toggle { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
@@ -83,6 +127,26 @@
             <div id="formError" class="msg msg-error mt-2" style="display:none"></div>
 
             <div class="form-group">
+              <label class="form-label">Create type</label>
+              <div class="type-toggle">
+                <label class="type-option">
+                  <input type="radio" name="pollType" value="poll" checked />
+                  <span class="type-card">
+                    <strong>Normal poll</strong>
+                    <span>People vote and see live results.</span>
+                  </span>
+                </label>
+                <label class="type-option">
+                  <input type="radio" name="pollType" value="quiz" />
+                  <span class="type-card">
+                    <strong>Quiz question</strong>
+                    <span>Mark one correct answer.</span>
+                  </span>
+                </label>
+              </div>
+            </div>
+
+            <div class="form-group mt-3">
               <label class="form-label" for="question">Your question</label>
               <input
                 type="text"
@@ -120,13 +184,27 @@
             </div>
 
             <div class="form-group mt-3">
+              <label class="form-label" for="tags">Tags (optional)</label>
+              <input
+                type="text"
+                id="tags"
+                class="form-input"
+                placeholder="e.g. #trending #urgent #fun (comma separated)"
+                maxlength="200"
+              />
+              <p class="text-muted" style="font-size: 0.8rem; margin-top: 4px;">Separate tags with commas</p>
+            </div>
+
+            <div class="form-group mt-3">
               <label class="form-label">Options</label>
               <div class="options-list" id="optionsList">
                 <div class="option-row">
                   <input type="text" class="form-input option-input" placeholder="Option 1" maxlength="100" />
+                  <label class="correct-choice"><input type="radio" name="correctOption" value="0" /> Correct</label>
                 </div>
                 <div class="option-row">
                   <input type="text" class="form-input option-input" placeholder="Option 2" maxlength="100" />
+                  <label class="correct-choice"><input type="radio" name="correctOption" value="1" /> Correct</label>
                 </div>
               </div>
               <button class="add-option-btn mt-2" id="addOptionBtn">+ Add another option</button>
@@ -176,6 +254,13 @@
     const signUpBtn = document.getElementById('signUpBtn');
     const dashboardBtn = document.getElementById('dashboardBtn');
     const logoutBtn = document.getElementById('logoutBtn');
+    const optionsList = document.getElementById('optionsList');
+
+    document.querySelectorAll('input[name="pollType"]').forEach((input) => {
+      input.addEventListener('change', () => {
+        optionsList.classList.toggle('quiz-mode', getPollType() === 'quiz');
+      });
+    });
 
     onAuthChange(async (user) => {
       currentUser = user;
@@ -220,11 +305,13 @@
       row.className = 'option-row';
       row.innerHTML = `
         <input type="text" class="form-input option-input" placeholder="Option ${optionCount}" maxlength="100" />
+        <label class="correct-choice"><input type="radio" name="correctOption" value="${optionCount - 1}" /> Correct</label>
         <button class="remove-btn" title="Remove">✕</button>
       `;
       row.querySelector('.remove-btn').addEventListener('click', () => {
         row.remove();
         optionCount--;
+        refreshOptionIndexes();
         if (optionCount >= MAX_OPTIONS) {
           document.getElementById('addOptionBtn').style.display = 'none';
         } else {
@@ -235,6 +322,7 @@
       if (optionCount >= MAX_OPTIONS) {
         document.getElementById('addOptionBtn').style.display = 'none';
       }
+      refreshOptionIndexes();
     });
 
     // Create poll
@@ -244,12 +332,20 @@
       errEl.style.display = 'none';
 
       const question = document.getElementById('question').value.trim();
-      const options = [...document.querySelectorAll('.option-input')]
-        .map(i => i.value.trim())
-        .filter(Boolean);
+      const pollType = getPollType();
+      const optionRows = [...document.querySelectorAll('.option-row')]
+        .map((row) => ({
+          text: row.querySelector('.option-input').value.trim(),
+          correct: row.querySelector('input[name="correctOption"]').checked,
+        }))
+        .filter(option => option.text);
+      const options = optionRows.map(option => option.text);
+      const correctOptionIndex = optionRows.findIndex(option => option.correct);
+      const correctOptionKey = correctOptionIndex >= 0 ? `option_${correctOptionIndex}` : null;
 
       if (!question) { showError('Please enter a question.'); return; }
       if (options.length < 2) { showError('Please enter at least 2 options.'); return; }
+      if (pollType === 'quiz' && !correctOptionKey) { showError('Please mark the correct answer for this quiz.'); return; }
 
       btn.disabled = true;
       btn.textContent = 'Creating…';
@@ -263,11 +359,18 @@
         const creatorName = currentUserProfile ? currentUserProfile.username : null;
         const category = document.getElementById('category').value;
         const timeLimit = document.getElementById('timeLimit').value;
+        const tagsInput = document.getElementById('tags').value.trim();
+        const tags = tagsInput 
+          ? tagsInput.split(',').map(t => t.trim().replace(/^#/, '')).filter(Boolean)
+          : [];
         const pollId = await createPoll({
           question,
           options,
           category,
+          tags,
           timeLimit,
+          pollType,
+          correctOptionKey,
           creatorId: effectiveUser ? effectiveUser.uid : null,
           creatorName: creatorName,
         });
@@ -300,6 +403,17 @@
       btn.textContent = 'Copied!';
       setTimeout(() => btn.textContent = 'Copy', 2000);
     });
+
+    function getPollType() {
+      return document.querySelector('input[name="pollType"]:checked').value;
+    }
+
+    function refreshOptionIndexes() {
+      [...document.querySelectorAll('.option-row')].forEach((row, index) => {
+        row.querySelector('.option-input').placeholder = `Option ${index + 1}`;
+        row.querySelector('input[name="correctOption"]').value = String(index);
+      });
+    }
   </script>
 </body>
 </html>

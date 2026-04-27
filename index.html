@@ -150,6 +150,12 @@
       </div>
     </section>
 
+    <!-- Trending Categories -->
+    <section class="features" id="trending">
+      <p class="section-label text-center">🔥 Trending Categories</p>
+      <div id="trendingContainer" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-top: 24px;"></div>
+    </section>
+
     <footer class="footer">
       Built with Firebase &amp; Vercel · <span id="year"></span>
     </footer>
@@ -157,6 +163,7 @@
 
   <script type="module">
     import { onAuthChange, logOut } from './auth.js';
+    import { listenToAllPolls, getTrendingCategories } from './polls.js';
 
     document.getElementById('year').textContent = new Date().getFullYear();
 
@@ -164,6 +171,25 @@
     const signUpBtn = document.getElementById('signUpBtn');
     const dashboardBtn = document.getElementById('dashboardBtn');
     const logoutBtn = document.getElementById('logoutBtn');
+
+    // Load trending categories
+    listenToAllPolls((polls) => {
+      const trending = getTrendingCategories(polls, 6);
+      const container = document.getElementById('trendingContainer');
+      
+      if (trending.length === 0) {
+        container.innerHTML = '<p class="text-muted" style="grid-column: 1/-1; text-align: center;">No polls yet. Be the first to create one!</p>';
+        return;
+      }
+
+      container.innerHTML = trending.map(item => `
+        <div style="padding: 20px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); text-align: center; cursor: pointer; transition: border-color var(--transition);" onclick="window.location.href='/dashboard.html'">
+          <div style="font-size: 1.5rem; margin-bottom: 8px;">📊</div>
+          <div style="font-weight: 600; margin-bottom: 4px;">${item.category}</div>
+          <div style="font-size: 0.85rem; color: var(--accent);">${item.count} poll${item.count !== 1 ? 's' : ''}</div>
+        </div>
+      `).join('');
+    });
 
     onAuthChange((user) => {
       if (user) {

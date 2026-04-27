@@ -8,7 +8,17 @@ import {
 import { db } from './firebase.js';
 
 // ── Create a new poll ─────────────────────────────────────────────────────────
-export async function createPoll({ question, options, category = 'Other', timeLimit = 'none', creatorId = null, creatorName = null }) {
+export async function createPoll({
+  question,
+  options,
+  category = 'Other',
+  tags = [],
+  timeLimit = 'none',
+  pollType = 'poll',
+  correctOptionKey = null,
+  creatorId = null,
+  creatorName = null
+}) {
   const optionMap = {};
   options.forEach((text, i) => {
     optionMap[`option_${i}`] = { text, votes: 0 };
@@ -32,8 +42,11 @@ export async function createPoll({ question, options, category = 'Other', timeLi
     question,
     options: optionMap,
     category,
+    tags: Array.isArray(tags) ? tags.filter(t => t.trim()) : [],
     timeLimit,
     expiresAt: expiresAt ? new Date(expiresAt) : null,
+    pollType,
+    correctOptionKey: pollType === 'quiz' ? correctOptionKey : null,
     creatorId,
     creatorName,
     createdAt: serverTimestamp(),
@@ -180,4 +193,51 @@ export function getTimeRemaining(poll) {
   if (hours > 0) return `${hours}h remaining`;
   if (minutes > 0) return `${minutes}m remaining`;
   return `${seconds}s remaining`;
+}
+
+// ── Search polls by title or tags ─────────────────────────────────────────────
+export function searchPolls(polls, searchTerm) {
+  if (!searchTerm.trim()) return polls;
+  
+  const term = searchTerm.toLowerCase();
+  return polls.filter(poll => {
+    const questionMatch = poll.question?.toLowerCase().includes(term);
+    const tagsMatch = poll.tags?.some(tag => tag.toLowerCase().includes(term));
+    const categoryMatch = poll.category?.toLowerCase().includes(term);
+    return questionMatch || tagsMatch || categoryMatch;
+  });
+}
+
+// ── Get trending categories (most common) ──────────────────────────────────────
+export function getTrendingCategories(polls, limit = 5) {
+  const categoryCount = {};
+  
+  polls.forEach(poll => {
+    if (poll.category) {
+      categoryCount[poll.category] = (categoryCount[poll.category] || 0) + 1;
+    }
+  });
+
+  return Object.entries(categoryCount)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit)
+    .map(([category, count]) => ({ category, count }));
+}
+
+// ── Get popular tags (most common) ────────────────────────────────────────────
+export function getPopularTags(polls, limit = 10) {
+  const tagCount = {};
+  
+  polls.forEach(poll => {
+    if (poll.tags && Array.isArray(poll.tags)) {
+      poll.tags.forEach(tag => {
+        tagCount[tag] = (tagCount[tag] || 0) + 1;
+      });
+    }
+  });
+
+  return Object.entries(tagCount)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit)
+    .map(([tag, count]) => ({ tag, count }));
 }
