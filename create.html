@@ -383,8 +383,8 @@
         const card = document.getElementById('successCard');
         card.style.display = 'block';
       } catch (e) {
-        showError('Failed to create poll. Check your Firebase config.');
         console.error(e);
+        showError(getCreateErrorMessage(e));
         btn.disabled = false;
         btn.textContent = 'Create Poll';
       }
@@ -413,6 +413,15 @@
         row.querySelector('.option-input').placeholder = `Option ${index + 1}`;
         row.querySelector('input[name="correctOption"]').value = String(index);
       });
+    }
+
+    function getCreateErrorMessage(error) {
+      if (error?.code === 'permission-denied') {
+        return 'Firestore rules rejected this quiz. Publish the updated firestore.rules file in Firebase Console, then try again.';
+      }
+      return error?.message
+        ? `Failed to create poll: ${error.message}`
+        : 'Failed to create poll. Check your Firebase config.';
     }
   </script>
 </body>

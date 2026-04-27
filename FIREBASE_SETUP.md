@@ -57,7 +57,17 @@ service cloud.firestore {
 
       // Anyone can create a poll (creatorId may be null for anonymous)
       allow create: if request.resource.data.question is string
-                    && request.resource.data.options is map;
+                    && request.resource.data.question.size() > 0
+                    && request.resource.data.options is map
+                    && request.resource.data.options.size() >= 2
+                    && request.resource.data.pollType in ['poll', 'quiz']
+                    && (
+                      request.resource.data.pollType == 'poll'
+                      || (
+                        request.resource.data.correctOptionKey is string
+                        && request.resource.data.correctOptionKey in request.resource.data.options.keys()
+                      )
+                    );
 
       // Only vote count updates are allowed without auth
       allow update: if request.resource.data.diff(resource.data).affectedKeys()
@@ -112,6 +122,12 @@ polls/
       ...up to option_4
     }
     creatorId:  string | null
+    creatorName:string | null
+    pollType:   "poll" | "quiz"
+    correctOptionKey: string | null
+    category:   string
+    tags:       string[]
+    expiresAt:  Timestamp | null
     createdAt:  Timestamp
     totalVotes: number
 ```
