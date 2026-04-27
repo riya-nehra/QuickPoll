@@ -38,6 +38,42 @@
       50%       { opacity: 0.4; transform: scale(0.7); }
     }
 
+    /* Category badge */
+    .category-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      background: rgba(109,255,135,0.1);
+      border: 1px solid rgba(109,255,135,0.3);
+      color: var(--accent);
+      border-radius: 99px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 8px;
+    }
+
+    .expiration-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      background: rgba(255, 193, 7, 0.1);
+      border: 1px solid rgba(255, 193, 7, 0.3);
+      color: #ffc107;
+      border-radius: 99px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-left: 8px;
+      margin-bottom: 8px;
+    }
+
+    .expiration-badge.expired {
+      background: rgba(244, 67, 54, 0.1);
+      border-color: rgba(244, 67, 54, 0.3);
+      color: #f44336;
+    }
+
     /* Result bars */
     .result-item { margin-bottom: 20px; }
     .result-row {
@@ -90,6 +126,7 @@
         <div id="resultsCard" style="display:none" class="fade-in">
           <div class="results-header">
             <div class="live-badge"><span class="live-dot"></span> Live results</div>
+            <div id="categoryBadge"></div><span id="expirationBadge"></span>
             <h1 class="poll-question" id="pollQuestion"></h1>
             <p class="total-votes" id="totalVotes"></p>
           </div>
@@ -116,7 +153,7 @@
   </div>
 
   <script type="module">
-    import { listenToPoll } from './polls.js';
+    import { listenToPoll, getTimeRemaining, isPollExpired } from './polls.js';
     import { onAuthChange } from './auth.js';
 
     const params = new URLSearchParams(location.search);
@@ -146,6 +183,24 @@
         document.getElementById('resultsCard').style.display = 'block';
 
         document.getElementById('pollQuestion').textContent = poll.question;
+        
+        // Display category
+        const categoryBadge = document.getElementById('categoryBadge');
+        if (poll.category) {
+          categoryBadge.innerHTML = `<span class="category-badge">${poll.category}</span>`;
+        }
+        
+        // Display expiration
+        const expirationBadge = document.getElementById('expirationBadge');
+        if (poll.expiresAt) {
+          const isExpired = isPollExpired(poll);
+          const timeRemaining = getTimeRemaining(poll);
+          const badgeClass = isExpired ? 'expiration-badge expired' : 'expiration-badge';
+          expirationBadge.innerHTML = `<span class="${badgeClass}">${timeRemaining}</span>`;
+        } else {
+          expirationBadge.innerHTML = '';
+        }
+        
         const total = poll.totalVotes || 0;
         document.getElementById('totalVotes').textContent =
           `${total} vote${total !== 1 ? 's' : ''} so far`;

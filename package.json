@@ -1,6 +1,7 @@
 {
   "name": "quickpoll",
   "version": "1.0.0",
+  "type": "module",
   "description": "A lightweight real-time polling app built with Firebase and Vercel",
   "scripts": {
     "dev": "vite",

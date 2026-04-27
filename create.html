@@ -94,6 +94,32 @@
             </div>
 
             <div class="form-group mt-3">
+              <label class="form-label" for="category">Category</label>
+              <select id="category" class="form-input">
+                <option value="Other">Other</option>
+                <option value="Political">Political</option>
+                <option value="Food">Food</option>
+                <option value="Education">Education</option>
+                <option value="Entertainment">Entertainment</option>
+                <option value="Sports">Sports</option>
+                <option value="Technology">Technology</option>
+                <option value="Health">Health</option>
+                <option value="Travel">Travel</option>
+              </select>
+            </div>
+
+            <div class="form-group mt-3">
+              <label class="form-label" for="timeLimit">Time Limit</label>
+              <select id="timeLimit" class="form-input">
+                <option value="none">No time limit</option>
+                <option value="hour">1 Hour</option>
+                <option value="day">1 Day</option>
+                <option value="month">1 Month</option>
+                <option value="year">1 Year</option>
+              </select>
+            </div>
+
+            <div class="form-group mt-3">
               <label class="form-label">Options</label>
               <div class="options-list" id="optionsList">
                 <div class="option-row">
@@ -235,9 +261,13 @@
         }
 
         const creatorName = currentUserProfile ? currentUserProfile.username : null;
+        const category = document.getElementById('category').value;
+        const timeLimit = document.getElementById('timeLimit').value;
         const pollId = await createPoll({
           question,
           options,
+          category,
+          timeLimit,
           creatorId: effectiveUser ? effectiveUser.uid : null,
           creatorName: creatorName,
         });
