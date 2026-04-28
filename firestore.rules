@@ -1,14 +1,24 @@
-// firestore.rules
-// Copy-paste these rules into Firebase Console -> Firestore -> Rules
-// Then click "Publish"
-
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     match /polls/{pollId} {
       allow read: true;
-      allow create: if true;
-      allow update: if true;
+
+      allow create: if request.resource.data.question is string
+                    && request.resource.data.question.size() > 0
+                    && request.resource.data.options is map
+                    && request.resource.data.options.size() >= 2
+                    && request.resource.data.pollType in ['poll', 'quiz']
+                    && (
+                      request.resource.data.pollType == 'poll'
+                      || (
+                        request.resource.data.correctOptionKey is string
+                        && request.resource.data.correctOptionKey in request.resource.data.options.keys()
+                      )
+                    );
+
+      allow update: if request.resource.data.diff(resource.data).affectedKeys()
+                       .hasOnly(['options', 'totalVotes']);
     }
 
     match /users/{userId} {
